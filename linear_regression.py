@@ -12,27 +12,32 @@ import numpy as np
 import scipy
 import matplotlib.pyplot as plt
 
-rng = np.random.default_rng()
 
-#
-# model y = mx + b
-#
+class LinearFunction:
+    def __init__(self, m, b):
+        self.m = m
+        self.b = b
+    def __call__(self, x):
+        return self.m * x + self.b
 
-m = 2
-b = 3
+
+def generate_data(x, f, sd_noise=1):
+    noise = np.random.normal(0, sd_noise, len(x))
+    return f(x) + noise
+
 
 # data
 
+f = LinearFunction(2, 3)
 x = np.linspace(0, 10, 101)
-noise = np.random.normal(0, 1, len(x))
-y = m*x + b + noise
+y = generate_data(x, f)
 
 # true model line
 
 x_endpoints = np.array([0, 10])
-y_endpoints = m*x_endpoints + b
+y_endpoints = f(x_endpoints)
 
-# regression (manual)
+# regression (manual matrix calculation)
 
 x1t = np.array([x, np.ones_like(x)]) # x1t = (x 1)'
 x1 = np.transpose(x1t)               # x1  = (x 1)
