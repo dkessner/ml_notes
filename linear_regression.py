@@ -13,6 +13,10 @@ import scipy
 import matplotlib.pyplot as plt
 
 
+#
+# linear model with gaussian noise
+#
+
 class LinearFunction:
     def __init__(self, m, b):
         self.m = m
@@ -26,40 +30,95 @@ def generate_data(x, f, sd_noise=1):
     return f(x) + noise
 
 
-# data
+#
+# least squares regression
+#
 
-f = LinearFunction(2, 3)
-x = np.linspace(0, 10, 101)
-y = generate_data(x, f)
+def least_squares(x, y):
 
-# true model line
+    # matrix calculation
 
-x_endpoints = np.array([0, 10])
-y_endpoints = f(x_endpoints)
+    x1t = np.array([x, np.ones_like(x)]) # x1t = (x 1)'
+    x1 = np.transpose(x1t)               # x1  = (x 1)
+    A = x1t @ x1                         # A is 2x2
+    A_inv = np.linalg.inv(A)
 
-# regression (manual matrix calculation)
+    m_est, b_est = A_inv @ x1t @ y
 
-x1t = np.array([x, np.ones_like(x)]) # x1t = (x 1)'
-x1 = np.transpose(x1t)               # x1  = (x 1)
-A = x1t @ x1                         # A is 2x2
-A_inv = np.linalg.inv(A)
+    # scipy least squares for comparison
+    solution, _, _, _ = scipy.linalg.lstsq(x1, y)
+    print("estimates from scipy:", solution)
 
-m_est, b_est = A_inv @ x1t @ y
-print("regression estimates m: " + str(m_est) + "b: " + str(b_est))
+    return m_est, b_est
 
-y_endpoints_est = m_est * x_endpoints + b_est
 
-# regression (scipy least squares)
+#
+# gradient descent
+#
 
-solution, _, _, _ = scipy.linalg.lstsq(x1, y)
-print("estimates from scipy:", solution)
+def C(x, y, m, b):
+    return np.linalg.norm(y - (m*x+b), ord=2)
 
-# plot
+def dCdm(x, y, m, b):
+    return m*x@x + b*x.sum() - x@y
 
-plt.plot(x, y, '.')
-plt.plot(x_endpoints, y_endpoints, 'g-')
-plt.plot(x_endpoints, y_endpoints_est, 'r-')
-plt.ylim([0, 25])
-plt.show()
+def dCdb(x, y, m, b):
+    return (m*x+b - y).sum()
 
+def gradient_descent(x, y):
+
+    m = 100
+    b = 100
+
+    #print("initial:", m, b, C(x, y, m, b))
+
+    rate = .0003
+
+    for i in range(10000):
+        m -= dCdm(x, y, m, b) * rate
+        b -= dCdb(x, y, m, b) * rate
+
+    #print("final:", m, b, C(x, y, m, b))
+
+    return m, b
+
+
+
+def main():
+
+    # generate data
+
+    f = LinearFunction(2, 3)
+    x = np.linspace(0, 10, 101)
+    y = generate_data(x, f)
+
+    # true model line
+
+    x_endpoints = np.array([0, 10])
+    y_true = f(x_endpoints)
+
+    # least squares regression 
+
+    m_est, b_est = least_squares(x, y)
+    print("least squares estimates (m,b):", str(m_est), str(b_est))
+
+    y_est = m_est * x_endpoints + b_est
+
+    # gradient descent
+
+    m_gd, b_gd = gradient_descent(x, y)
+    print("gradient descent estimates (m,b):", str(m_gd), str(b_gd))
+
+    # plot
+
+    plt.plot(x, y, '.')
+    plt.plot(x_endpoints, y_true, 'g-')
+    plt.plot(x_endpoints, y_est, 'r-')
+    plt.ylim([0, 25])
+    plt.show()
+
+
+
+if __name__ == '__main__':
+    main()
 
