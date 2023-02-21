@@ -18,6 +18,8 @@ class VectorFunction:
         return np.zeros(self.len_out)
     def derivative(self, x):
         return None
+    def derivative_parameter(self, x):
+        return None
 
 
 def test_vector_function():
@@ -37,6 +39,8 @@ class LinearTransformation(VectorFunction):
         return self.A @ x
     def derivative(self, x):
         return self.A.copy()
+    def derivative_parameter(self, x):
+        return x
 
 
 def test_linear_transformation():
@@ -69,7 +73,7 @@ class Network(VectorFunction):
         def __init__(self):
             self.x = []
             self.dT = []
-            self.dxdw = []
+            self.dT_dparam = []
             self.final = None
         
     def __call__(self, x):
@@ -83,7 +87,7 @@ class Network(VectorFunction):
             y = t(x)
             result.x.append(y)
             result.dT.append(t.derivative(x))
-            result.dxdw.append(x) # TODO: t.dtdw(x)
+            result.dT_dparam.append(t.derivative_parameter(x))
             x = y            
 
         result.final = result.x[-1] # convenience reference to final values
@@ -123,6 +127,8 @@ def test_network():
     assert (n(e[0]).final == [2,6,10]).all()
     assert (n(e[1]).final == [4,8,12]).all()
 
+    result = n(e)
+    print("n(e):", result.__dict__)
     print("n(e).final:", n(e).final)
     assert (n(e).x[-1] == [[2,4], [6,8], [10,12]]).all()
 
@@ -135,12 +141,14 @@ class SimpleLinearNetwork(Network):
 
 def test_simple_linear_network():
     print("\ntest_simple_linear_network()")
+
     l = SimpleLinearNetwork(2, 3)
     x = np.array(range(11))
     xt = np.array([np.ones_like(x), x]) # xt = (x)' (2 row vectors)
     y = l(xt)
     print("xt:", xt)
     print("y.final:", y.final)
+    assert (y.final == 2*x+3).all()
 
 
 def run_tests():
