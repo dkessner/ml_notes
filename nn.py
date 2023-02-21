@@ -16,6 +16,8 @@ class VectorFunction:
     def __call__(self, x):
         assert len(x) == self.len_in
         return np.zeros(self.len_out)
+    def derivative(self, x):
+        return None
 
 
 def test_vector_function():
@@ -33,10 +35,12 @@ class LinearTransformation(VectorFunction):
         super().__init__(len_in, len_out)
     def __call__(self, x):
         return self.A @ x
+    def derivative(self, x):
+        return self.A.copy()
 
 
 def test_linear_transformation():
-    print("test_linear_transformation()")
+    print("\ntest_linear_transformation()")
     A = np.array([[1, 3, 5], [2, 4, 6]])
     print("A:\n", A)
     T = LinearTransformation(A)
@@ -60,13 +64,29 @@ class Network(VectorFunction):
                 assert T[i-1].len_out == t.len_in
 
         super().__init__(T[0].len_in, T[-1].len_out)
+
+    class CallResult:
+        def __init__(self):
+            self.x = []
+            self.dT = []
+            self.dxdw = []
+            self.final = None
         
     def __call__(self, x):
-        # apply each transformation in the list
-        # TODO: return intermediate results
-        result = x
+
+        # apply each transformation in the list,
+        # save intermediate results and derivatives
+
+        result = self.CallResult()
+
         for t in self.T:
-            result = t(result)
+            y = t(x)
+            result.x.append(y)
+            result.dT.append(t.derivative(x))
+            result.dxdw.append(x) # TODO: t.dtdw(x)
+            x = y            
+
+        result.final = result.x[-1] # convenience reference to final values
         return result
 
     # TODO:
@@ -85,7 +105,7 @@ class Network(VectorFunction):
 
 
 def test_network():
-    print("test_network()")
+    print("\ntest_network()")
 
     A = np.array([[1,2],[3,4],[5,6]])
     B = np.eye(3) * 2
@@ -97,12 +117,14 @@ def test_network():
     assert n.len_out == 3
 
     e = np.eye(2)
-    print(n(e[0]))
-    print(n(e[1]))
-    assert (n(e[0]) == [2,6,10]).all()
-    assert (n(e[1]) == [4,8,12]).all()
-    print(n(e))
-    assert (n(e) == [[2,4], [6,8], [10,12]]).all()
+
+    print("n(e0).final:", n(e[0]).final)
+    print("n(e1).final:", n(e[1]).final)
+    assert (n(e[0]).final == [2,6,10]).all()
+    assert (n(e[1]).final == [4,8,12]).all()
+
+    print("n(e).final:", n(e).final)
+    assert (n(e).x[-1] == [[2,4], [6,8], [10,12]]).all()
 
 
 class SimpleLinearNetwork(Network):
@@ -112,12 +134,13 @@ class SimpleLinearNetwork(Network):
 
 
 def test_simple_linear_network():
+    print("\ntest_simple_linear_network()")
     l = SimpleLinearNetwork(2, 3)
     x = np.array(range(11))
     xt = np.array([np.ones_like(x), x]) # xt = (x)' (2 row vectors)
     y = l(xt)
     print("xt:", xt)
-    print("y:", y)
+    print("y.final:", y.final)
 
 
 def run_tests():
