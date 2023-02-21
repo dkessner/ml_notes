@@ -63,10 +63,26 @@ class Network(VectorFunction):
         
     def __call__(self, x):
         # apply each transformation in the list
+        # TODO: return intermediate results
         result = x
         for t in self.T:
             result = t(result)
         return result
+
+    # TODO:
+    #def calculate_cost_and_gradient(x, y):
+
+    # TODO:
+    # def apply_gradient_step()
+
+    # TODO:
+    # def gradient_descent(x, y):
+    #     loop:
+    #           calculate_cost_and_gradient(x, y)
+    #           apply_gradient_step
+    #
+
+
 
 def test_network():
     print("test_network()")
@@ -108,10 +124,11 @@ def run_tests():
     test_vector_function()
     test_linear_transformation()
     test_network()
+    test_simple_linear_network()
 
 
 def main():
-    test_simple_linear_network()
+    run_tests()
 
 
 if __name__ == '__main__':
