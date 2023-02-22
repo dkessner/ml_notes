@@ -78,23 +78,38 @@ class Network(VectorFunction):
         
     def __call__(self, x):
 
-        # apply each transformation in the list,
-        # save intermediate results and derivatives
-
         result = self.CallResult()
 
         for t in self.T:
+            # apply each transformation in the list,
             y = t(x)
+
+            # save intermediate results and derivatives
             result.x.append(y)
             result.dT.append(t.derivative(x))
             result.dT_dparam.append(t.derivative_parameter(x))
+
             x = y            
 
-        result.final = result.x[-1] # convenience reference to final values
+        # convenience reference to final values
+        result.final = result.x[-1] 
+
         return result
 
-    # TODO:
-    #def calculate_cost_and_gradient(x, y):
+    class CostGradient:
+        def __init__(self):
+            self.C = None
+            self.dC_dparam = []
+
+    def calculate_cost_and_gradient(self, x, call_result, y):
+
+        result = self.CostGradient()
+        result.C = np.linalg.norm(y - call_result.final, ord=2)
+
+        # TODO next: calculate gradient
+
+        return result
+
 
     # TODO:
     # def apply_gradient_step()
@@ -133,6 +148,8 @@ def test_network():
     assert (n(e).x[-1] == [[2,4], [6,8], [10,12]]).all()
 
 
+
+
 class SimpleLinearNetwork(Network):
     def __init__(self, m=0, b=0):
         T = LinearTransformation(np.array([[b, m]]))
@@ -151,6 +168,30 @@ def test_simple_linear_network():
     assert (y.final == 2*x+3).all()
 
 
+def test_network_cost():
+
+    f = lambda x : 2*x + 3
+    x = np.linspace(0, 10, 101)
+    noise = np.random.normal(0, 1, len(x))
+    y = f(x) + noise
+
+    l = SimpleLinearNetwork()
+
+    xt = np.array([np.ones_like(x), x]) # xt = (x)' (2 row vectors)
+    call_result = l(xt)
+    cost_gradient = l.calculate_cost_and_gradient(x, call_result, y)
+
+    print("C:", cost_gradient.C)
+
+    b, m = l.T[0].A[0]
+    print("b, m:", b, m)
+
+    expected = np.linalg.norm(y - (m*x+b), ord=2)
+    print("expected:", expected)
+
+    # TODO: test gradient
+
+
 def run_tests():
     test_vector_function()
     test_linear_transformation()
@@ -159,7 +200,7 @@ def run_tests():
 
 
 def main():
-    run_tests()
+    test_network_cost()
 
 
 if __name__ == '__main__':
