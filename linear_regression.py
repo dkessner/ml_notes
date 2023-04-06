@@ -67,8 +67,8 @@ def dCdb(x, y, m, b):
 
 def gradient_descent(x, y):
 
-    m = 100
-    b = 100
+    m = 0
+    b = 0
 
     #print("initial:", m, b, C(x, y, m, b))
 

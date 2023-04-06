@@ -9,6 +9,11 @@ import scipy
 import matplotlib.pyplot as plt
 
 
+#
+# VectorFunction(m,n): R^m -> R^n
+#   - derivative() returns nxm matrix
+#
+
 class VectorFunction:
     def __init__(self, len_in, len_out):
         self.len_in = len_in
@@ -28,6 +33,11 @@ def test_vector_function():
     x = np.array([1, 3, 5])
     assert (f(x) == np.zeros(4)).all()
 
+#
+# LinearTransformation(A): R^m -> R^n
+#   - defined by the nxm matrix A
+#   - derivative() returns A
+#
 
 class LinearTransformation(VectorFunction):
     def __init__(self, A):
@@ -41,6 +51,10 @@ class LinearTransformation(VectorFunction):
         return self.A.copy()
     def derivative_parameter(self, x):
         return x
+    def add(self, dA):
+        print(self.A.shape, dA.shape)
+        assert self.A.shape == dA.shape
+        self.A += dA
 
 
 def test_linear_transformation():
@@ -56,6 +70,12 @@ def test_linear_transformation():
     assert (T(e[1]) == [3,4]).all()
     assert (T(e[2]) == [5,6]).all()
 
+
+#
+# Network(T)
+#   - represents the composite VectorFunction
+#       T[0] -> T[1] -> ... -> T[n-1]
+#
 
 class Network(VectorFunction):
     def __init__(self, T):
@@ -101,18 +121,23 @@ class Network(VectorFunction):
             self.C = None
             self.dC_dparam = []
 
-    def calculate_cost_and_gradient(self, x, call_result, y):
+    def calculate_cost_and_gradient(self, xt, call_result, y):
 
         result = self.CostGradient()
         result.C = np.linalg.norm(y - call_result.final, ord=2)
 
-        # TODO next: calculate gradient
+        # TODO: backprop
+        result.dC_dparam = [np.transpose(xt @ np.transpose(call_result.final - y))]
 
         return result
 
 
     # TODO:
-    # def apply_gradient_step()
+    def apply_gradient_step(self, dC_dparam, rate):
+        for dA, t in zip(dC_dparam, self.T):
+            if dA is not None:
+                t.add(-dA*rate)
+        
 
     # TODO:
     # def gradient_descent(x, y):
@@ -151,7 +176,7 @@ def test_network():
 
 
 class SimpleLinearNetwork(Network):
-    def __init__(self, m=0, b=0):
+    def __init__(self, m=0.0, b=0.0):
         T = LinearTransformation(np.array([[b, m]]))
         super().__init__([T])
 
@@ -169,6 +194,8 @@ def test_simple_linear_network():
 
 
 def test_network_cost():
+    
+    print("\ntest_network_cost()")
 
     f = lambda x : 2*x + 3
     x = np.linspace(0, 10, 101)
@@ -179,7 +206,7 @@ def test_network_cost():
 
     xt = np.array([np.ones_like(x), x]) # xt = (x)' (2 row vectors)
     call_result = l(xt)
-    cost_gradient = l.calculate_cost_and_gradient(x, call_result, y)
+    cost_gradient = l.calculate_cost_and_gradient(xt, call_result, y)
 
     print("C:", cost_gradient.C)
 
@@ -189,7 +216,23 @@ def test_network_cost():
     expected = np.linalg.norm(y - (m*x+b), ord=2)
     print("expected:", expected)
 
+    #print("gradient:", cost_gradient.dC_dparam)
+
     # TODO: test gradient
+
+    for i in range(50):
+        print("gradient:", cost_gradient.dC_dparam)
+        l.apply_gradient_step(cost_gradient.dC_dparam, .0003)
+        call_result = l(xt)
+        cost_gradient = l.calculate_cost_and_gradient(xt, call_result, y)
+        print("C:", cost_gradient.C)
+        b, m = l.T[0].A[0]
+        print("b, m:", b, m)
+        expected = np.linalg.norm(y - (m*x+b), ord=2)
+        print("expected:", expected)
+
+
+
 
 
 def run_tests():
@@ -200,6 +243,7 @@ def run_tests():
 
 
 def main():
+    run_tests()
     test_network_cost()
 
 
