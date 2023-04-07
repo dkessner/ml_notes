@@ -42,7 +42,6 @@ def test_vector_function():
 class LinearTransformation(VectorFunction):
     def __init__(self, A):
         self.A = A
-        print("A.shape:", A.shape)
         len_out, len_in = A.shape
         super().__init__(len_in, len_out)
     def __call__(self, x):
@@ -52,9 +51,10 @@ class LinearTransformation(VectorFunction):
     def derivative_parameter(self, x):
         return x
     def add(self, dA):
-        print(self.A.shape, dA.shape)
         assert self.A.shape == dA.shape
         self.A += dA
+    def __repr__(self):
+        return str(self.A)
 
 
 def test_linear_transformation():
@@ -121,30 +121,62 @@ class Network(VectorFunction):
             self.C = None
             self.dC_dparam = []
 
-    def calculate_cost_and_gradient(self, xt, call_result, y):
+    def calculate_cost_and_gradient(self, x, call_result, y):
 
         result = self.CostGradient()
         result.C = np.linalg.norm(y - call_result.final, ord=2)
 
         # TODO: backprop
-        result.dC_dparam = [np.transpose(xt @ np.transpose(call_result.final - y))]
+        result.dC_dparam = [np.transpose(x @ np.transpose(call_result.final - y))]
 
         return result
 
 
-    # TODO:
     def apply_gradient_step(self, dC_dparam, rate):
-        for dA, t in zip(dC_dparam, self.T):
-            if dA is not None:
-                t.add(-dA*rate)
+        for t, dCdt in zip(self.T, dC_dparam):
+            if dCdt is not None:
+                t.add(-dCdt*rate)
         
 
-    # TODO:
-    # def gradient_descent(x, y):
-    #     loop:
-    #           calculate_cost_and_gradient(x, y)
-    #           apply_gradient_step
-    #
+    def gradient_descent(self, x, y):
+
+        rate = .0003
+        max_iterations = 5000
+        C_current = None
+        dC_threshold = -1e-5
+
+        for i in range(max_iterations):
+
+            # calculate function and gradient
+
+            call_result = self(x)
+            cost_gradient = self.calculate_cost_and_gradient(x, call_result, y)
+
+            # exit condition: |dC| small
+
+            dC = cost_gradient.C - C_current \
+                    if C_current is not None \
+                    else dC_threshold
+
+            C_current = cost_gradient.C
+
+            if dC > 0:
+                print("[Network:gradient_descent()] dC:", dC)
+                print("[Network:gradient_descent()] Error: dC > 0")
+                return
+
+            if dC > dC_threshold:
+                print("[Network:gradient_descent()] break: dC > threshold")
+                print("[Network:gradient_descent()] iterations:", i)
+                break
+
+            #print("C:", cost_gradient.C)
+            #print("T:", self.T)
+            #print("gradient:", cost_gradient.dC_dparam)
+
+            # move in direction of gradient
+
+            self.apply_gradient_step(cost_gradient.dC_dparam, rate)
 
 
 
@@ -213,25 +245,42 @@ def test_network_cost():
     b, m = l.T[0].A[0]
     print("b, m:", b, m)
 
-    expected = np.linalg.norm(y - (m*x+b), ord=2)
-    print("expected:", expected)
-
-    #print("gradient:", cost_gradient.dC_dparam)
-
-    # TODO: test gradient
-
-    for i in range(50):
-        print("gradient:", cost_gradient.dC_dparam)
-        l.apply_gradient_step(cost_gradient.dC_dparam, .0003)
-        call_result = l(xt)
-        cost_gradient = l.calculate_cost_and_gradient(xt, call_result, y)
-        print("C:", cost_gradient.C)
-        b, m = l.T[0].A[0]
-        print("b, m:", b, m)
-        expected = np.linalg.norm(y - (m*x+b), ord=2)
-        print("expected:", expected)
+    C_expected = np.linalg.norm(y - (m*x+b), ord=2)
+    print("C expected:", C_expected)
+    
+    assert abs(cost_gradient.C - C_expected) < 1e-6
 
 
+def test_gradient_descent():
+
+    print("\ntest_gradient_descent()")
+
+    f = lambda x : 2*x + 3
+    x = np.linspace(0, 10, 101)
+    noise = np.random.normal(0, 1, len(x))
+    y = f(x) + noise
+
+    l = SimpleLinearNetwork()
+
+    xt = np.array([np.ones_like(x), x]) # xt = (x)' (2 row vectors)
+ 
+    l.gradient_descent(xt, y)
+
+    b_est, m_est = l.T[0].A[0]
+    print("b_est, m_est:", b_est, m_est)
+
+    # plot
+
+    x_endpoints = np.array([0, 10])
+    y_true = f(x_endpoints)
+
+    y_est = m_est * x_endpoints + b_est
+
+    plt.plot(x, y, '.')
+    plt.plot(x_endpoints, y_true, 'g-')
+    plt.plot(x_endpoints, y_est, 'r-')
+    plt.ylim([0, 25])
+    plt.show()
 
 
 
@@ -240,11 +289,11 @@ def run_tests():
     test_linear_transformation()
     test_network()
     test_simple_linear_network()
-
+    test_network_cost()
 
 def main():
     run_tests()
-    test_network_cost()
+    test_gradient_descent()
 
 
 if __name__ == '__main__':
